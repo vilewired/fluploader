@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=fluploader
+Categories=Graphics
+Comment=Uploads screenshots made with flameshot to my cdn
+Icon=cloud-upload
+Exec=~/.local/bin/flupload %u
+Terminal=false

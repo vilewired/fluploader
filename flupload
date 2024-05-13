@@ -1,0 +1,45 @@
+#!/bin/sh
+function _notify()
+{
+    notify-send --expire-time 2000 \
+        --app-name 'fluploader' \
+        --icon 'flameshot' \
+        "$1" "$2"
+}
+temp_file="/tmp/screenshot.png"
+flameshot gui -r > $temp_file
+
+# https://github.com/notmeta/flameshot-s3-uploader/blob/master/capture_and_upload.sh
+# got the idea from here and from this discussion https://github.com/flameshot-org/flameshot/issues/178
+
+if [[ $(file --mime-type -b $temp_file) != "image/png" ]]; then
+	rm $temp_file
+    notify-send "Screenshot aborted" -a "Flameshot" && exit 1
+fi
+URL="https://cdn.yourcdnhost.com/yourprofile/img/"
+ACCESS_KEY="yourkey"
+FILE=$temp_file
+if [ ! -f "$FILE" ]; then
+    _notify 'fluploader' "Error: Invalid file. ($1)"
+    exit 1
+fi
+
+
+prefix=$(date +'%Y%m%d%H%M%S')
+FILENAME="$prefix.png"
+LINK="https://cdn.yourdomain.com/img/${FILENAME}"
+_notify 'fluploader' 'Uploading file to the wired...'
+
+res=$(curl --silent --show-error --request PUT \
+            --url "${URL}${FILENAME}" \
+            --header "AccessKey: ${ACCESS_KEY}" \
+            --header 'Content-Type: application/octet-stream' \
+            --header 'accept: application/json' \
+            --data-binary "@${FILE}" 2>&1)
+resCode=$(echo $res | jq '.HttpCode')
+if [ "$resCode" -eq 201 ]; then
+    echo "$LINK" | tr -d '\n' | xclip -selection clipboard
+    _notify 'fluploader' 'Success! The link was sent to your clipboard'
+else
+    _notify 'fluploader' "Upload failed with status: $resCode"
+fi
